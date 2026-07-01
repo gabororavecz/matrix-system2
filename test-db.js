@@ -1,9 +1,24 @@
-const db = require("./database/sqlite");
+const {
+    fetchDaily,
+    getRSI,
+    getTrend,
+    getMACD,
+    getATR,
+    getAverageVolume
+} = require("./services/marketService");
 
-console.log("Database connected!");
+const { RSI, SMA, MACD, ATR } = require("technicalindicators");
 
-const tables = db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-    .all();
+(async () => {
 
-console.log(tables);
+    const data = await fetchDaily("AAPL");
+
+    console.log("Candles:", data.length);
+
+    console.log("RSI:", getRSI(data, RSI));
+    console.log("Trend:", getTrend(data, SMA));
+    console.log("MACD:", getMACD(data, MACD));
+    console.log("ATR:", getATR(data, ATR));
+    console.log("Volume:", getAverageVolume(data));
+
+})();
