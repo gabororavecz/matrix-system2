@@ -91,6 +91,10 @@ router.get("/", async (req, res) => {
                     freshnessWeight: getFreshnessWeight(article.publishedAt)
                 });
 
+                const allTradesFlat = analyzed.flatMap(a => a.trades);
+
+                const { buildConsensus } = require("../services/consensusService");
+
                 allTrades.push({
                     asset,
                     action,
@@ -108,10 +112,10 @@ router.get("/", async (req, res) => {
         // =========================
         // RESPONSE
         // =========================
-        res.json({
-            trades: allTrades,
-            count: allTrades.length
-        });
+       res.json({
+    bestConsensus: consensus.bestConsensus,
+    allConsensus: consensus.allConsensus
+});
 
     } catch (err) {
         console.error(err);
