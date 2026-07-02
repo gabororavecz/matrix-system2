@@ -7,6 +7,10 @@ const evaluateRoute = require("./routes/evaluate");
 
 const app = express();
 
+const evaluateRoute = require("./routes/evaluate");
+
+app.use("/evaluate", evaluateRoute);
+
 app.use(express.json());
 
 app.use("/news", newsRoute);

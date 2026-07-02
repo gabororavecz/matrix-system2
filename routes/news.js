@@ -91,9 +91,23 @@ router.get("/", async (req, res) => {
                     freshnessWeight: getFreshnessWeight(article.publishedAt)
                 });
 
+                const { filterTrades } = require("../services/filterService");
+
+                const allTradesFlat = filterTrades(
+                    analyzed.flatMap(a => a.trades)
+                );
+
                 const allTradesFlat = analyzed.flatMap(a => a.trades);
 
                 const { buildConsensus } = require("../services/consensusService");
+
+                const { executionDecision } = require("../services/executionService");
+
+                const decision = executionDecision(consensus.bestConsensus);
+
+                const { saveTrade } = require("../services/tradeService");
+
+                saveTrade(consensus.bestConsensus);
 
                 allTrades.push({
                     asset,
@@ -114,7 +128,9 @@ router.get("/", async (req, res) => {
         // =========================
        res.json({
     bestConsensus: consensus.bestConsensus,
-    allConsensus: consensus.allConsensus
+    allConsensus: consensus.allConsensus,
+    consensus,
+    decision
 });
 
     } catch (err) {
