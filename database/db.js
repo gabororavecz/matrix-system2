@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS trades (
 
     result TEXT,
     entryPrice REAL,
-    exitPrice REAL
+    exitPrice REAL,
+    futureReturn REAL
 )
 `).run();
 

@@ -1,38 +1,60 @@
-const express = require("express");
 const db = require("../database/db");
+const {
+    getFuturePrice,
+    evaluateTrade
+} = require("../services/backtestService");
 
-const router = express.Router();
-
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
 
     const trades = db.prepare(`
         SELECT * FROM trades
         ORDER BY timestamp DESC
+        LIMIT 50
     `).all();
 
-    const results = {
-        total: trades.length,
-        wins: 0,
-        losses: 0
-    };
+    let wins = 0;
+    let losses = 0;
 
-    for (const t of trades) {
+    for (const trade of trades) {
 
-        // simplistic placeholder logic (we refine later)
-        if (t.result === "WIN") results.wins++;
-        if (t.result === "LOSS") results.losses++;
+        const priceData = await getFuturePrice(trade.asset);
+
+        if (!priceData) continue;
+
+        const result = evaluateTrade(
+            trade.action,
+            priceData.current,
+            priceData.future
+        );
+
+        if (result === "WIN") wins++;
+        if (result === "LOSS") losses++;
+
+        db.prepare(`
+            UPDATE trades
+            SET result = ?
+            WHERE id = ?
+        `).run(result, trade.id);
     }
 
-    const winRate = results.total
-        ? (results.wins / results.total) * 100
-        : 0;
+    const total = wins + losses;
 
     res.json({
-        totalTrades: results.total,
-        wins: results.wins,
-        losses: results.losses,
-        winRate: winRate.toFixed(2) + "%"
+        total,
+        wins,
+        losses,
+        winRate: total ? ((wins / total) * 100).toFixed(2) : "0"
     });
 });
 
-module.exports = router;
+router.get("/all", (req, res) => {
+
+    const trades = db.prepare(`
+        SELECT *
+        FROM trades
+        ORDER BY id DESC
+    `).all();
+
+    res.json(trades);
+
+});

@@ -97,7 +97,6 @@ router.get("/", async (req, res) => {
                     analyzed.flatMap(a => a.trades)
                 );
 
-                const allTradesFlat = analyzed.flatMap(a => a.trades);
 
                 const { buildConsensus } = require("../services/consensusService");
 
