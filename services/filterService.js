@@ -6,7 +6,7 @@ function filterTrades(trades) {
         if (!t.action || t.action === "NONE") return false;
 
         // remove low confidence noise
-        if (t.confidence < 60) return false;
+        if (t.confidence < 40) return false;
 
         // remove blocked / no edge trades
         if (

@@ -15,11 +15,7 @@ const {
 } = require("../services/sentimentService");
 
 const {
-    calculateConfidence
-} = require("../services/scoringService");
-
-const {
-    getMarketData,
+    fetchDaily,
     getRSI,
     getTrend,
     getMACD,
@@ -27,115 +23,248 @@ const {
     getAverageVolume
 } = require("../services/marketService");
 
+const {
+    calculateConfidence
+} = require("../services/scoringService");
+
+const {
+        
+} = require("../services/filterService");
+
+const {
+    buildConsensus
+} = require("../services/consensusService");
+
+const {
+    executionDecision
+} = require("../services/executionService");
+
+const {
+    saveTrade
+} = require("../services/tradeService");
+
+
 router.get("/", async (req, res) => {
 
     try {
 
-        // =========================
-        // 1. GET NEWS
-        // =========================
+        console.log("Fetching news...");
+
         const articles = await fetchNews();
 
-        const allTrades = [];
+        const analysedTrades = [];
 
-        // =========================
-        // 2. LOOP ARTICLES
-        // =========================
+
         for (const article of articles) {
 
+
             const text =
-                (article.title || "") +
-                " " +
-                (article.description || "");
+                `${article.title || ""} ${article.description || ""}`;
+
 
             const sentiment = analyzeSentiment(text);
+
+            console.log(
+    "SENTIMENT:",
+    sentiment,
+    "TEXT:",
+    text.substring(0,100)
+);
+
             const impact = detectImpact(text);
+
             const assets = detectAssets(text);
 
-            const uniqueAssets = [...new Set(assets)];
 
-            for (let asset of uniqueAssets) {
+            for (const asset of [...new Set(assets)]) {
 
-                const baseTrade = mapToTrade(asset, sentiment);
 
-                if (baseTrade === "NO TRADE")
-                    continue;
-
-                const data = await getMarketData(asset);
-
-                if (!data || data.length === 0)
-                    continue;
-
-                const rsi = getRSI(data);
-                const trend = getTrend(data);
-                const macd = getMACD(data);
-                const atr = getATR(data);
-                const volume = getAverageVolume(data);
-
-                const action =
-                    baseTrade.includes("BUY")
-                        ? "BUY"
-                        : "SELL";
-
-                const finalTrade = baseTrade; // (keep simple for now)
-
-                const confidence = calculateConfidence({
-                    sentiment,
-                    impact,
-                    rsi,
-                    trend,
-                    macd,
-                    atr,
-                    volume,
-                    sourceWeight: getSourceWeight(article.source?.name),
-                    freshnessWeight: getFreshnessWeight(article.publishedAt)
-                });
-
-                const { filterTrades } = require("../services/filterService");
-
-                const allTradesFlat = filterTrades(
-                    analyzed.flatMap(a => a.trades)
+                const baseTrade = mapToTrade(
+                    asset,
+                    sentiment
                 );
 
 
-                const { buildConsensus } = require("../services/consensusService");
+                if (baseTrade === "NO TRADE") {
+                    continue;
+                }
 
-                const { executionDecision } = require("../services/executionService");
 
-                const decision = executionDecision(consensus.bestConsensus);
-
-                const { saveTrade } = require("../services/tradeService");
-
-                saveTrade(consensus.bestConsensus);
-
-                allTrades.push({
+                console.log(
                     asset,
-                    action,
-                    trend,
+                    sentiment,
+                    baseTrade
+                );
+
+
+                const marketData = await fetchDaily(asset);
+
+
+                if (!marketData || marketData.length === 0) {
+
+                    console.log(
+        "NO MARKET DATA:",
+        asset
+    );
+                    continue;
+                }
+
+
+                const rsi = getRSI(marketData);
+
+                const trend = getTrend(marketData);
+
+                const macd = getMACD(marketData);
+
+                const atr = getATR(marketData);
+
+                const volume = getAverageVolume(marketData);
+
+
+
+                const confidence = calculateConfidence({
+
+                    sentiment,
+
+                    impact,
+
                     rsi,
+
+                    trend,
+
                     macd,
+
                     atr,
+
                     volume,
-                    confidence,
-                    finalTrade
+
+                    sourceWeight:
+                        getSourceWeight(
+                            article.source?.name
+                        ),
+
+                    freshnessWeight:
+                        getFreshnessWeight(
+                            article.publishedAt
+                        )
                 });
+
+
+
+                analysedTrades.push({
+
+                    asset,
+
+                    action:
+                        baseTrade.includes("BUY")
+                            ? "BUY"
+                            : "SELL",
+
+                    confidence,
+
+                    sentiment,
+
+                    impact,
+
+                    trend,
+
+                    rsi,
+
+                    macd,
+
+                    atr,
+
+                    volume,
+
+                    article:
+                        article.title
+
+                });
+
+
             }
+
         }
 
-        // =========================
-        // RESPONSE
-        // =========================
-       res.json({
-    bestConsensus: consensus.bestConsensus,
-    allConsensus: consensus.allConsensus,
-    consensus,
-    decision
-});
+
+
+        console.log(
+            "Trades found:",
+            analysedTrades.length
+        );
+
+
+
+      const filteredTrades = analysedTrades;
+
+
+        const consensus =
+            buildConsensus(
+                filteredTrades
+            );
+
+
+
+        let decision = null;
+
+
+        if (consensus.bestConsensus) {
+
+            decision =
+                executionDecision(
+                    consensus.bestConsensus
+                );
+
+
+            saveTrade(
+                consensus.bestConsensus
+            );
+
+        }
+
+
+
+        res.json({
+
+            analysed:
+                analysedTrades.length,
+
+            filtered:
+                filteredTrades.length,
+
+            bestTrade:
+                consensus.bestConsensus,
+
+            allTrades:
+                filteredTrades,
+
+            decision
+
+        });
+
+
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "news route failed" });
+
+        console.error(
+            "NEWS ROUTE ERROR:",
+            err
+        );
+
+
+        res.status(500).json({
+
+            error:
+                "news route failed",
+
+            message:
+                err.message
+
+        });
+
     }
+
 });
+
 
 module.exports = router;

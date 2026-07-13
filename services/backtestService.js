@@ -1,40 +1,32 @@
-const yahoo = require("yahoo-finance2").default;
-const { getSymbol } = require("../utils/symbols");
+const { fetchDaily } = require("./marketService");
 
-async function getFuturePrice(asset, daysAhead = 1) {
+async function getFuturePrice(symbol) {
+    const data = await fetchDaily(symbol);
 
-    const symbol = getSymbol(asset);
+    // Need enough history
+    if (!data || data.length < 6) {
+        return null;
+    }
 
-    if (!symbol) return null;
-
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 10);
-
-    const data = await yahoo.historical(symbol, {
-        period1: start,
-        period2: end,
-        interval: "1d"
-    });
-
-    if (!data || data.length < 2) return null;
+    // Simulate:
+    // current = 5 days ago
+    // future = latest close
+    const current = data[data.length - 6].close;
+    const future = data[data.length - 1].close;
 
     return {
-        current: data[data.length - 2].close,
-        future: data[data.length - 1].close
+        current,
+        future
     };
 }
 
-function evaluateTrade(direction, entry, exit) {
-
-    const move = ((exit - entry) / entry) * 100;
-
-    if (direction === "BUY") {
-        return move > 0 ? "WIN" : "LOSS";
+function evaluateTrade(action, entry, exit) {
+    if (action === "BUY") {
+        return exit > entry ? "WIN" : "LOSS";
     }
 
-    if (direction === "SELL") {
-        return move < 0 ? "WIN" : "LOSS";
+    if (action === "SELL") {
+        return exit < entry ? "WIN" : "LOSS";
     }
 
     return "UNKNOWN";

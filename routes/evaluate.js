@@ -1,4 +1,8 @@
+const express = require("express");
+const router = express.Router();
+
 const db = require("../database/db");
+
 const {
     getFuturePrice,
     evaluateTrade
@@ -7,7 +11,8 @@ const {
 router.get("/", async (req, res) => {
 
     const trades = db.prepare(`
-        SELECT * FROM trades
+        SELECT *
+        FROM trades
         ORDER BY timestamp DESC
         LIMIT 50
     `).all();
@@ -43,7 +48,9 @@ router.get("/", async (req, res) => {
         total,
         wins,
         losses,
-        winRate: total ? ((wins / total) * 100).toFixed(2) : "0"
+        winRate: total
+            ? ((wins / total) * 100).toFixed(2)
+            : "0"
     });
 });
 
@@ -58,3 +65,5 @@ router.get("/all", (req, res) => {
     res.json(trades);
 
 });
+
+module.exports = router;

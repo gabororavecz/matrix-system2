@@ -1,3 +1,10 @@
+const {
+    RSI,
+    SMA,
+    MACD,
+    ATR
+} = require("technicalindicators");
+
 const axios = require("axios");
 
 const API_KEY = process.env.ALPHA_VANTAGE_KEY;
@@ -59,7 +66,7 @@ function getVolumes(data) {
 }
 
 // RSI
-function getRSI(data, RSI) {
+function getRSI(data) {
     const closes = getCloses(data);
 
     const rsi = RSI.calculate({
@@ -71,7 +78,7 @@ function getRSI(data, RSI) {
 }
 
 // SMA trend
-function getTrend(data, SMA) {
+function getTrend(data) {
     const closes = getCloses(data);
 
     const sma50 = SMA.calculate({ values: closes, period: 50 });
@@ -88,7 +95,7 @@ function getTrend(data, SMA) {
 }
 
 // MACD
-function getMACD(data, MACD) {
+function getMACD(data) {
     const closes = getCloses(data);
 
     const macd = MACD.calculate({
@@ -102,7 +109,7 @@ function getMACD(data, MACD) {
 }
 
 // ATR
-function getATR(data, ATR) {
+function getATR(data) {
     const highs = getHighs(data);
     const lows = getLows(data);
     const closes = getCloses(data);
