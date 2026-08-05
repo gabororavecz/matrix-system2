@@ -15,6 +15,10 @@ const {
 } = require("../services/sentimentService");
 
 const {
+    calculateConfidence
+} = require("../services/scoringService");
+
+const {
     fetchDaily,
     getRSI,
     getTrend,
@@ -23,26 +27,14 @@ const {
     getAverageVolume
 } = require("../services/marketService");
 
-const {
-    calculateConfidence
-} = require("../services/scoringService");
+const { filterTrades } = require("../services/filterService");
 
 const {
-        
-} = require("../services/filterService");
-
-const {
-    buildConsensus
-} = require("../services/consensusService");
-
-const {
-    executionDecision
-} = require("../services/executionService");
-
-const {
-    saveTrade
-} = require("../services/tradeService");
-
+    RSI,
+    SMA,
+    MACD,
+    ATR
+} = require("technicalindicators");
 
 router.get("/", async (req, res) => {
 
@@ -52,75 +44,45 @@ router.get("/", async (req, res) => {
 
         const articles = await fetchNews();
 
-        const analysedTrades = [];
-
+        const allTrades = [];
 
         for (const article of articles) {
 
-
             const text =
-                `${article.title || ""} ${article.description || ""}`;
-
+                (article.title || "") +
+                " " +
+                (article.description || "");
 
             const sentiment = analyzeSentiment(text);
-
-            console.log(
-    "SENTIMENT:",
-    sentiment,
-    "TEXT:",
-    text.substring(0,100)
-);
-
             const impact = detectImpact(text);
-
             const assets = detectAssets(text);
 
+            for (const asset of assets) {
 
-            for (const asset of [...new Set(assets)]) {
+                console.log("Analysing:", asset);
 
+                const finalTrade = mapToTrade(asset, sentiment);
 
-                const baseTrade = mapToTrade(
-                    asset,
-                    sentiment
-                );
-
-
-                if (baseTrade === "NO TRADE") {
+                if (finalTrade === "NO TRADE")
                     continue;
-                }
 
+                const data = await fetchDaily(asset);
 
-                console.log(
-                    asset,
-                    sentiment,
-                    baseTrade
-                );
+                console.log(asset, "candles:", data.length);
 
-
-                const marketData = await fetchDaily(asset);
-
-
-                if (!marketData || marketData.length === 0) {
-
-                    console.log(
-        "NO MARKET DATA:",
-        asset
-    );
+                if (!data.length)
                     continue;
-                }
 
+                const rsi = getRSI(data, RSI);
+                const trend = getTrend(data, SMA);
+                const macd = getMACD(data, MACD);
+                const atr = getATR(data, ATR);
+                const volume = getAverageVolume(data);
 
-                const rsi = getRSI(marketData);
-
-                const trend = getTrend(marketData);
-
-                const macd = getMACD(marketData);
-
-                const atr = getATR(marketData);
-
-                const volume = getAverageVolume(marketData);
-
-
+                const action =
+                    finalTrade.startsWith("BUY")
+                        ? "BUY"
+                        : "SELL";
 
                 const confidence = calculateConfidence({
 
@@ -138,27 +100,31 @@ router.get("/", async (req, res) => {
 
                     volume,
 
-                    sourceWeight:
-                        getSourceWeight(
-                            article.source?.name
-                        ),
+                    sourceWeight: getSourceWeight(article.source?.name),
 
-                    freshnessWeight:
-                        getFreshnessWeight(
-                            article.publishedAt
-                        )
+                    freshnessWeight: getFreshnessWeight(article.publishedAt)
+
                 });
 
+                console.log({
+    asset,
+    sentiment,
+    impact,
+    rsi,
+    trend,
+    macd,
+    atr,
+    volume,
+    confidence
+});
 
-
-                analysedTrades.push({
+                allTrades.push({
 
                     asset,
 
-                    action:
-                        baseTrade.includes("BUY")
-                            ? "BUY"
-                            : "SELL",
+                    action,
+
+                    finalTrade,
 
                     confidence,
 
@@ -176,95 +142,52 @@ router.get("/", async (req, res) => {
 
                     volume,
 
-                    article:
-                        article.title
+                    headline: article.title
 
                 });
 
+                console.log("Trade added:", finalTrade, confidence);
 
             }
 
         }
 
+        console.log("Total trades before filtering:", allTrades.length);
 
+console.log(JSON.stringify(allTrades, null, 2));
 
-        console.log(
-            "Trades found:",
-            analysedTrades.length
-        );
+        const filtered = filterTrades(allTrades);
 
-
-
-      const filteredTrades = analysedTrades;
-
-
-        const consensus =
-            buildConsensus(
-                filteredTrades
-            );
-
-
-
-        let decision = null;
-
-
-        if (consensus.bestConsensus) {
-
-            decision =
-                executionDecision(
-                    consensus.bestConsensus
-                );
-
-
-            saveTrade(
-                consensus.bestConsensus
-            );
-
-        }
-
-
+        console.log("Trades found:", filtered.length);
 
         res.json({
 
-            analysed:
-                analysedTrades.length,
+            analysed: articles.length,
 
-            filtered:
-                filteredTrades.length,
+            filtered: filtered.length,
 
-            bestTrade:
-                consensus.bestConsensus,
+            allTrades: filtered,
 
-            allTrades:
-                filteredTrades,
-
-            decision
+            decision: filtered.length ? filtered[0] : null
 
         });
 
+    }
 
+    catch (err) {
 
-    } catch (err) {
-
-        console.error(
-            "NEWS ROUTE ERROR:",
-            err
-        );
-
+        console.error(err);
 
         res.status(500).json({
 
-            error:
-                "news route failed",
+            error: "news route failed",
 
-            message:
-                err.message
+            message: err.message
 
         });
 
     }
 
 });
-
 
 module.exports = router;

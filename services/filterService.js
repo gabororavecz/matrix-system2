@@ -2,22 +2,29 @@ function filterTrades(trades) {
 
     return trades.filter(t => {
 
-        // remove dead signals
-        if (!t.action || t.action === "NONE") return false;
+        if (!t.action || t.action === "NONE") {
+            console.log("Rejected:", t.asset, "No action");
+            return false;
+        }
 
-        // remove low confidence noise
-        if (t.confidence < 40) return false;
+        if (t.confidence < 60) {
+            console.log("Rejected:", t.asset, "Low confidence:", t.confidence);
+            return false;
+        }
 
-        // remove blocked / no edge trades
         if (
             t.finalTrade.includes("BLOCKED") ||
             t.finalTrade.includes("NO EDGE")
-        ) return false;
+        ) {
+            console.log("Rejected:", t.asset, t.finalTrade);
+            return false;
+        }
+
+        console.log("Accepted:", t.asset, t.confidence);
 
         return true;
     });
+
 }
 
-module.exports = {
-    filterTrades
-};
+module.exports = { filterTrades };

@@ -1,3 +1,5 @@
+const { getSymbol } = require("../utils/symbols.js");
+
 const {
     RSI,
     SMA,
@@ -13,31 +15,54 @@ const API_KEY = process.env.ALPHA_VANTAGE_KEY;
 const cache = {};
 const CACHE_TIME = 60 * 1000;
 
-async function fetchDaily(symbol) {
+async function fetchDaily(asset) {
+
+    const symbol = getSymbol(asset);
+
+    if (!symbol) {
+        console.log("Unknown asset:", asset);
+        return [];
+    }
+
     const now = Date.now();
 
     if (cache[symbol] && now - cache[symbol].time < CACHE_TIME) {
         return cache[symbol].data;
     }
 
+    console.log("Fetching market data for", asset, "->", symbol);
+
     const url =
         `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&outputsize=compact&apikey=${API_KEY}`;
 
     const res = await axios.get(url);
 
+    if (res.data["Error Message"]) {
+        console.log(res.data["Error Message"]);
+        return [];
+    }
+
+    if (res.data["Note"]) {
+        console.log("AlphaVantage rate limit:", res.data["Note"]);
+        return [];
+    }
+
     const series = res.data["Time Series (Daily)"];
 
-    if (!series) return [];
+    if (!series) {
+        console.log("No market data returned for", symbol);
+        return [];
+    }
 
     const data = Object.entries(series)
         .map(([date, value]) => ({
             date,
-            close: parseFloat(value["4. close"]),
-            high: parseFloat(value["2. high"]),
-            low: parseFloat(value["3. low"]),
-            volume: parseFloat(value["6. volume"])
+            close: Number(value["4. close"]),
+            high: Number(value["2. high"]),
+            low: Number(value["3. low"]),
+            volume: Number(value["6. volume"])
         }))
-        .reverse(); // oldest → newest
+        .reverse();
 
     cache[symbol] = {
         time: now,
