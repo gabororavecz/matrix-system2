@@ -1,21 +1,11 @@
-const { getSymbol } = require("../utils/symbols.js");
+const yahooFinance = require("yahoo-finance2").default;
+const { RSI, SMA, MACD, ATR } = require("technicalindicators");
+const { getSymbol } = require("../utils/symbol");
 
-const {
-    RSI,
-    SMA,
-    MACD,
-    ATR
-} = require("technicalindicators");
-
-const axios = require("axios");
-
-const API_KEY = process.env.ALPHA_VANTAGE_KEY;
-
-// simple cache to avoid rate limits
 const cache = {};
 const CACHE_TIME = 60 * 1000;
 
-async function fetchDaily(asset) {
+async function getMarketData(asset) {
 
     const symbol = getSymbol(asset);
 
@@ -24,143 +14,136 @@ async function fetchDaily(asset) {
         return [];
     }
 
-    const now = Date.now();
-
-    if (cache[symbol] && now - cache[symbol].time < CACHE_TIME) {
+    if (
+        cache[symbol] &&
+        Date.now() - cache[symbol].time < CACHE_TIME
+    ) {
         return cache[symbol].data;
     }
 
-    console.log("Fetching market data for", asset, "->", symbol);
+    console.log("Fetching Yahoo data:", symbol);
 
-    const url =
-        `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&outputsize=compact&apikey=${API_KEY}`;
+    try {
 
-    const res = await axios.get(url);
+        const result = await yahooFinance.historical(symbol, {
+            period1: new Date(Date.now() - 250 * 24 * 60 * 60 * 1000),
+            interval: "1d"
+        });
 
-    if (res.data["Error Message"]) {
-        console.log(res.data["Error Message"]);
+        if (!result || result.length === 0) {
+            console.log("No Yahoo data:", symbol);
+            return [];
+        }
+
+        const candles = result
+            .filter(c => c.close)
+            .map(c => ({
+                date: c.date,
+                close: c.close,
+                high: c.high,
+                low: c.low,
+                volume: c.volume || 0
+            }));
+
+        cache[symbol] = {
+            time: Date.now(),
+            data: candles
+        };
+
+        console.log(symbol, "candles:", candles.length);
+
+        return candles;
+
+    } catch (err) {
+
+        console.log("Yahoo error:", symbol);
+        console.log(err.message);
+
         return [];
     }
-
-    if (res.data["Note"]) {
-        console.log("AlphaVantage rate limit:", res.data["Note"]);
-        return [];
-    }
-
-    const series = res.data["Time Series (Daily)"];
-
-    if (!series) {
-        console.log("No market data returned for", symbol);
-        return [];
-    }
-
-    const data = Object.entries(series)
-        .map(([date, value]) => ({
-            date,
-            close: Number(value["4. close"]),
-            high: Number(value["2. high"]),
-            low: Number(value["3. low"]),
-            volume: Number(value["6. volume"])
-        }))
-        .reverse();
-
-    cache[symbol] = {
-        time: now,
-        data
-    };
-
-    return data;
 }
 
-// ---------------- INDICATORS ----------------
-
-function getCloses(data) {
-    return data.map(x => x.close);
-}
-
-function getHighs(data) {
-    return data.map(x => x.high);
-}
-
-function getLows(data) {
-    return data.map(x => x.low);
-}
-
-function getVolumes(data) {
-    return data.map(x => x.volume);
-}
-
-// RSI
 function getRSI(data) {
-    const closes = getCloses(data);
 
-    const rsi = RSI.calculate({
-        values: closes,
+    const values = data.map(x => x.close);
+
+    const result = RSI.calculate({
+        values,
         period: 14
     });
 
-    return rsi.at(-1) || null;
+    return result.at(-1) ?? null;
 }
 
-// SMA trend
 function getTrend(data) {
-    const closes = getCloses(data);
 
-    const sma50 = SMA.calculate({ values: closes, period: 50 });
-    const sma200 = SMA.calculate({ values: closes, period: 200 });
+    const values = data.map(x => x.close);
+
+    const sma50 = SMA.calculate({
+        values,
+        period: 50
+    });
+
+    const sma200 = SMA.calculate({
+        values,
+        period: 200
+    });
 
     const last50 = sma50.at(-1);
     const last200 = sma200.at(-1);
 
-    if (!last50 || !last200) return "UNKNOWN";
+    if (!last50 || !last200)
+        return "UNKNOWN";
 
-    if (last50 > last200) return "BULLISH";
-    if (last50 < last200) return "BEARISH";
+    if (last50 > last200)
+        return "BULLISH";
+
+    if (last50 < last200)
+        return "BEARISH";
+
     return "SIDEWAYS";
 }
 
-// MACD
 function getMACD(data) {
-    const closes = getCloses(data);
 
-    const macd = MACD.calculate({
-        values: closes,
+    const values = data.map(x => x.close);
+
+    const result = MACD.calculate({
+        values,
         fastPeriod: 12,
         slowPeriod: 26,
         signalPeriod: 9
     });
 
-    return macd.at(-1) || null;
+    return result.at(-1) ?? null;
 }
 
-// ATR
 function getATR(data) {
-    const highs = getHighs(data);
-    const lows = getLows(data);
-    const closes = getCloses(data);
 
-    const atr = ATR.calculate({
-        high: highs,
-        low: lows,
-        close: closes,
+    const result = ATR.calculate({
+        high: data.map(x => x.high),
+        low: data.map(x => x.low),
+        close: data.map(x => x.close),
         period: 14
     });
 
-    return atr.at(-1) || null;
+    return result.at(-1) ?? null;
 }
 
-// Volume
 function getAverageVolume(data) {
-    const volumes = getVolumes(data);
 
-    const last20 = volumes.slice(-20);
-    if (!last20.length) return 0;
+    const volumes = data
+        .map(x => x.volume)
+        .slice(-20);
 
-    return last20.reduce((a, b) => a + b, 0) / last20.length;
+    if (!volumes.length)
+        return 0;
+
+    return volumes.reduce((a, b) => a + b, 0) / volumes.length;
 }
 
 module.exports = {
-    fetchDaily,
+    getMarketData,
     getRSI,
     getTrend,
     getMACD,

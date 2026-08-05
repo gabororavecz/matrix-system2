@@ -2,13 +2,16 @@ function filterTrades(trades) {
 
     return trades.filter(t => {
 
+        console.log("Checking trade:");
+        console.log(t);
+
         if (!t.action || t.action === "NONE") {
-            console.log("Rejected:", t.asset, "No action");
+            console.log("Rejected: action");
             return false;
         }
 
         if (t.confidence < 60) {
-            console.log("Rejected:", t.asset, "Low confidence:", t.confidence);
+            console.log("Rejected: confidence", t.confidence);
             return false;
         }
 
@@ -16,15 +19,13 @@ function filterTrades(trades) {
             t.finalTrade.includes("BLOCKED") ||
             t.finalTrade.includes("NO EDGE")
         ) {
-            console.log("Rejected:", t.asset, t.finalTrade);
+            console.log("Rejected: blocked");
             return false;
         }
 
-        console.log("Accepted:", t.asset, t.confidence);
-
+        console.log("Accepted");
         return true;
     });
-
 }
 
 module.exports = { filterTrades };
