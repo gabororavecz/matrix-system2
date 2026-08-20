@@ -19,7 +19,7 @@ const {
 } = require("../services/scoringService");
 
 const {
-    fetchDaily,
+    getMarketData,
     getRSI,
     getTrend,
     getMACD,
@@ -66,17 +66,17 @@ router.get("/", async (req, res) => {
                 if (finalTrade === "NO TRADE")
                     continue;
 
-                const data = await fetchDaily(asset);
+                const data = await getMarketData(asset);
 
                 console.log(asset, "candles:", data.length);
 
                 if (!data.length)
                     continue;
 
-                const rsi = getRSI(data, RSI);
-                const trend = getTrend(data, SMA);
-                const macd = getMACD(data, MACD);
-                const atr = getATR(data, ATR);
+                const rsi = getRSI(data);
+                const trend = getTrend(data);
+                const macd = getMACD(data);
+                const atr = getATR(data);
                 const volume = getAverageVolume(data);
 
                 const action =

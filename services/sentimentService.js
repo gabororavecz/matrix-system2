@@ -97,6 +97,48 @@ function detectAssets(text) {
     }
 
     return [...new Set(assets)];
+    // GBP/USD
+if (
+    text.includes("gbp/usd") ||
+    text.includes("gbpusd") ||
+    text.includes("pound") ||
+    text.includes("sterling")
+) {
+    assets.push("GBPUSD");
+}
+
+// EUR/GBP
+if (
+    text.includes("eur/gbp") ||
+    text.includes("eurgbp")
+) {
+    assets.push("EURGBP");
+}
+
+// EUR/USD
+if (
+    text.includes("eur/usd") ||
+    text.includes("eurusd") ||
+    text.includes("euro")
+) {
+    assets.push("EURUSD");
+}
+
+// GBP/JPY
+if (
+    text.includes("gbp/jpy") ||
+    text.includes("gbpjpy")
+) {
+    assets.push("GBPJPY");
+}
+
+// GBP/HUF
+if (
+    text.includes("gbp/huf") ||
+    text.includes("gbphuf")
+) {
+    assets.push("GBPHUF");
+}
 }
 
 function detectImpact(text) {
@@ -175,6 +217,50 @@ function mapToTrade(asset, sentiment) {
         if (sentiment.includes("BULLISH"))
             return "BUY BTC";
     }
+    if (asset === "GBPUSD") {
+
+    if (sentiment.includes("BEARISH"))
+        return "SELL GBPUSD";
+
+    if (sentiment.includes("BULLISH"))
+        return "BUY GBPUSD";
+}
+
+if (asset === "EURGBP") {
+
+    if (sentiment.includes("BEARISH"))
+        return "SELL EURGBP";
+
+    if (sentiment.includes("BULLISH"))
+        return "BUY EURGBP";
+}
+
+if (asset === "EURUSD") {
+
+    if (sentiment.includes("BEARISH"))
+        return "SELL EURUSD";
+
+    if (sentiment.includes("BULLISH"))
+        return "BUY EURUSD";
+}
+
+if (asset === "GBPJPY") {
+
+    if (sentiment.includes("BEARISH"))
+        return "SELL GBPJPY";
+
+    if (sentiment.includes("BULLISH"))
+        return "BUY GBPJPY";
+}
+
+if (asset === "GBPHUF") {
+
+    if (sentiment.includes("BEARISH"))
+        return "SELL GBPHUF";
+
+    if (sentiment.includes("BULLISH"))
+        return "BUY GBPHUF";
+}
 
     return "NO TRADE";
 }

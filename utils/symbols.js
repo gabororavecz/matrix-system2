@@ -1,11 +1,42 @@
 const symbols = {
+
+    // =========================
+    // FOREX
+    // =========================
+
+    GBPUSD: "GBPUSD=X",
+    EURGBP: "EURGBP=X",
+    EURUSD: "EURUSD=X",
+    GBPJPY: "GBPJPY=X",
+    GBPHUF: "GBPHUF=X",
+
+    USDJPY: "JPY=X",
+    USDCHF: "CHF=X",
+    AUDUSD: "AUDUSD=X",
+    USDCAD: "CAD=X",
+    NZDUSD: "NZDUSD=X",
+
+    // =========================
+    // COMMODITIES
+    // =========================
+
+    XAUUSD: "GC=F",
+    USOIL: "CL=F",
+
+    // =========================
+    // INDICES
+    // =========================
+
     SPX500: "SPY",
-    USOIL: "USO",
-    XAUUSD: "GLD",
-    BTCUSD: "BTC-USD",
-    ETHUSD: "ETH-USD",
     NASDAQ: "QQQ",
-    DOW: "DIA"
+    DOW: "DIA",
+
+    // =========================
+    // CRYPTO
+    // =========================
+
+    BTCUSD: "BTC-USD",
+    ETHUSD: "ETH-USD"
 };
 
 function getSymbol(asset) {
@@ -13,5 +44,6 @@ function getSymbol(asset) {
 }
 
 module.exports = {
-    getSymbol
+    getSymbol,
+    symbols
 };

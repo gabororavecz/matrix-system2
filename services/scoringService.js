@@ -72,6 +72,7 @@ function calculateIndicatorScore({
 // =====================================================
 
 function calculateConfidence({
+    action,
     sentiment,
     impact,
     rsi,
