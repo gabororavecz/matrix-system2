@@ -65,8 +65,14 @@ function detectAssets(text) {
 
     const assets = [];
 
+    // =========================
+    // INDICES
+    // =========================
+
     if (
         text.includes("s&p") ||
+        text.includes("s&p 500") ||
+        text.includes("sp500") ||
         text.includes("nasdaq") ||
         text.includes("dow") ||
         text.includes("stocks") ||
@@ -75,70 +81,155 @@ function detectAssets(text) {
         assets.push("SPX500");
     }
 
+    // =========================
+    // OIL
+    // =========================
+
     if (
         text.includes("oil") ||
         text.includes("crude") ||
+        text.includes("wti") ||
+        text.includes("brent") ||
         text.includes("energy")
     ) {
         assets.push("USOIL");
     }
 
+    // =========================
+    // GOLD
+    // =========================
+
     if (
-        text.includes("gold")
+        text.includes("gold") ||
+        text.includes("bullion") ||
+        text.includes("xau")
     ) {
         assets.push("XAUUSD");
     }
 
+    // =========================
+    // BITCOIN
+    // =========================
+
     if (
         text.includes("bitcoin") ||
+        text.includes("btc") ||
         text.includes("crypto")
     ) {
         assets.push("BTCUSD");
     }
 
+    // =========================
+    // GBP / USD
+    // =========================
+
+    if (
+        text.includes("gbp/usd") ||
+        text.includes("gbpusd") ||
+        text.includes("pound against dollar") ||
+        text.includes("pound versus dollar") ||
+        text.includes("sterling against dollar")
+    ) {
+        assets.push("GBPUSD");
+    }
+
+    // =========================
+    // EUR / USD
+    // =========================
+
+    if (
+        text.includes("eur/usd") ||
+        text.includes("eurusd") ||
+        text.includes("euro against dollar") ||
+        text.includes("euro versus dollar")
+    ) {
+        assets.push("EURUSD");
+    }
+
+    // =========================
+    // EUR / GBP
+    // =========================
+
+    if (
+        text.includes("eur/gbp") ||
+        text.includes("eurgbp") ||
+        text.includes("euro against pound") ||
+        text.includes("euro versus pound")
+    ) {
+        assets.push("EURGBP");
+    }
+
+    // =========================
+    // GBP / JPY
+    // =========================
+
+    if (
+        text.includes("gbp/jpy") ||
+        text.includes("gbpjpy") ||
+        text.includes("pound against yen") ||
+        text.includes("pound versus yen")
+    ) {
+        assets.push("GBPJPY");
+    }
+
+    // =========================
+    // GBP / HUF
+    // =========================
+
+    if (
+        text.includes("gbp/huf") ||
+        text.includes("gbphuf") ||
+        text.includes("pound against forint") ||
+        text.includes("sterling against forint")
+    ) {
+        assets.push("GBPHUF");
+    }
+
+    // =========================
+    // OTHER FOREX
+    // =========================
+
+    if (
+        text.includes("usd/jpy") ||
+        text.includes("usdjpy") ||
+        text.includes("dollar against yen")
+    ) {
+        assets.push("USDJPY");
+    }
+
+    if (
+        text.includes("usd/chf") ||
+        text.includes("usdchf") ||
+        text.includes("dollar against franc")
+    ) {
+        assets.push("USDCHF");
+    }
+
+    if (
+        text.includes("aud/usd") ||
+        text.includes("audusd") ||
+        text.includes("australian dollar against dollar")
+    ) {
+        assets.push("AUDUSD");
+    }
+
+    if (
+        text.includes("usd/cad") ||
+        text.includes("usdcad") ||
+        text.includes("dollar against canadian dollar")
+    ) {
+        assets.push("USDCAD");
+    }
+
+    if (
+        text.includes("nzd/usd") ||
+        text.includes("nzdusd") ||
+        text.includes("new zealand dollar against dollar")
+    ) {
+        assets.push("NZDUSD");
+    }
+
     return [...new Set(assets)];
-    // GBP/USD
-if (
-    text.includes("gbp/usd") ||
-    text.includes("gbpusd") ||
-    text.includes("pound") ||
-    text.includes("sterling")
-) {
-    assets.push("GBPUSD");
-}
-
-// EUR/GBP
-if (
-    text.includes("eur/gbp") ||
-    text.includes("eurgbp")
-) {
-    assets.push("EURGBP");
-}
-
-// EUR/USD
-if (
-    text.includes("eur/usd") ||
-    text.includes("eurusd") ||
-    text.includes("euro")
-) {
-    assets.push("EURUSD");
-}
-
-// GBP/JPY
-if (
-    text.includes("gbp/jpy") ||
-    text.includes("gbpjpy")
-) {
-    assets.push("GBPJPY");
-}
-
-// GBP/HUF
-if (
-    text.includes("gbp/huf") ||
-    text.includes("gbphuf")
-) {
-    assets.push("GBPHUF");
-}
 }
 
 function detectImpact(text) {

@@ -53,7 +53,7 @@ async function getMarketData(asset) {
         const result = await yahooFinance.chart(symbol, {
 
             period1: new Date(
-                Date.now() - 250 * 24 * 60 * 60 * 1000
+                Date.now() - 400 * 24 * 60 * 60 * 1000
             ),
 
             period2: new Date(),

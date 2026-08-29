@@ -29,13 +29,6 @@ const {
 
 const { filterTrades } = require("../services/filterService");
 
-const {
-    RSI,
-    SMA,
-    MACD,
-    ATR
-} = require("technicalindicators");
-
 router.get("/", async (req, res) => {
 
     try {
@@ -45,6 +38,10 @@ router.get("/", async (req, res) => {
         const articles = await fetchNews();
 
         const allTrades = [];
+
+        // ==========================================
+        // ANALYSE EVERY NEWS ARTICLE
+        // ==========================================
 
         for (const article of articles) {
 
@@ -57,68 +54,146 @@ router.get("/", async (req, res) => {
             const impact = detectImpact(text);
             const assets = detectAssets(text);
 
+            // ==========================================
+            // ANALYSE EVERY ASSET FOUND IN THE ARTICLE
+            // ==========================================
+
             for (const asset of assets) {
 
                 console.log("Analysing:", asset);
 
-                const finalTrade = mapToTrade(asset, sentiment);
+                // ------------------------------------------
+                // 1. NEWS -> BUY / SELL
+                // ------------------------------------------
 
-                if (finalTrade === "NO TRADE")
+                const finalTrade = mapToTrade(
+                    asset,
+                    sentiment
+                );
+
+                if (finalTrade === "NO TRADE") {
+                    console.log(
+                        "No trade from sentiment:",
+                        asset,
+                        sentiment
+                    );
+
                     continue;
+                }
+
+                // ------------------------------------------
+                // 2. GET MARKET DATA
+                // ------------------------------------------
 
                 const data = await getMarketData(asset);
 
-                console.log(asset, "candles:", data.length);
+                console.log(
+                    asset,
+                    "candles:",
+                    data.length
+                );
 
-                if (!data.length)
+                if (!data.length) {
+                    console.log(
+                        "Skipping",
+                        asset,
+                        "- no market data"
+                    );
+
                     continue;
+                }
+
+                // ------------------------------------------
+                // 3. TECHNICAL INDICATORS
+                // ------------------------------------------
 
                 const rsi = getRSI(data);
+
                 const trend = getTrend(data);
+
                 const macd = getMACD(data);
+
                 const atr = getATR(data);
+
                 const volume = getAverageVolume(data);
+
+                // ------------------------------------------
+                // 4. DETERMINE ACTION
+                // ------------------------------------------
 
                 const action =
                     finalTrade.startsWith("BUY")
                         ? "BUY"
                         : "SELL";
 
-                const confidence = calculateConfidence({
+                // ------------------------------------------
+                // 5. SOURCE + FRESHNESS
+                // ------------------------------------------
 
-                    sentiment,
+                const sourceWeight =
+                    getSourceWeight(
+                        article.source?.name
+                    );
 
-                    impact,
+                const freshnessWeight =
+                    getFreshnessWeight(
+                        article.publishedAt
+                    );
 
-                    rsi,
+                // ------------------------------------------
+                // 6. CALCULATE CONFIDENCE
+                // ------------------------------------------
 
-                    trend,
+                const confidence =
+                    calculateConfidence({
 
-                    macd,
+                        action,
 
-                    atr,
+                        sentiment,
 
-                    volume,
+                        impact,
 
-                    sourceWeight: getSourceWeight(article.source?.name),
+                        rsi,
 
-                    freshnessWeight: getFreshnessWeight(article.publishedAt)
+                        trend,
 
-                });
+                        macd,
+
+                        atr,
+
+                        volume,
+
+                        sourceWeight,
+
+                        freshnessWeight
+
+                    });
+
+                // ------------------------------------------
+                // DEBUG
+                // ------------------------------------------
 
                 console.log({
-    asset,
-    sentiment,
-    impact,
-    rsi,
-    trend,
-    macd,
-    atr,
-    volume,
-    confidence
-});
+                    asset,
+                    action,
+                    finalTrade,
+                    sentiment,
+                    impact,
+                    rsi,
+                    trend,
+                    macd,
+                    atr,
+                    volume,
+                    sourceWeight,
+                    freshnessWeight,
+                    confidence
+                });
 
-                allTrades.push({
+                // ------------------------------------------
+                // 7. CREATE TRADE
+                // ------------------------------------------
+
+                const trade = {
 
                     asset,
 
@@ -142,47 +217,118 @@ router.get("/", async (req, res) => {
 
                     volume,
 
-                    headline: article.title
+                    sourceWeight,
 
-                });
+                    freshnessWeight,
 
-                console.log("Trade added:", finalTrade, confidence);
+                    headline:
+                        article.title || "",
+
+                    publishedAt:
+                        article.publishedAt || null,
+
+                    source:
+                        article.source?.name || "Unknown"
+
+                };
+
+                // ------------------------------------------
+                // 8. ADD TRADE TO ARRAY
+                // ------------------------------------------
+
+                allTrades.push(trade);
+
+                console.log(
+                    "Trade added:",
+                    finalTrade,
+                    "Confidence:",
+                    confidence
+                );
 
             }
-
         }
 
-        console.log("Total trades before filtering:", allTrades.length);
+        // ==========================================
+        // BEFORE FILTER
+        // ==========================================
 
-console.log(JSON.stringify(allTrades, null, 2));
+        console.log(
+            "Total trades before filtering:",
+            allTrades.length
+        );
 
-        const filtered = filterTrades(allTrades);
+        console.log(
+            JSON.stringify(
+                allTrades,
+                null,
+                2
+            )
+        );
 
-        console.log("Trades found:", filtered.length);
+        // ==========================================
+        // FILTER TRADES
+        // ==========================================
+
+        const filtered =
+            filterTrades(allTrades);
+
+        console.log(
+            "Trades found:",
+            filtered.length
+        );
+
+        // ==========================================
+        // BEST TRADE
+        // ==========================================
+
+        const bestTrade =
+            filtered.length > 0
+                ? filtered.reduce(
+                    (best, trade) =>
+                        trade.confidence >
+                        best.confidence
+                            ? trade
+                            : best
+                )
+                : null;
+
+        // ==========================================
+        // RESPONSE
+        // ==========================================
 
         res.json({
 
-            analysed: articles.length,
+            analysed:
+                articles.length,
 
-            filtered: filtered.length,
+            totalTrades:
+                allTrades.length,
 
-            allTrades: filtered,
+            filtered:
+                filtered.length,
 
-            decision: filtered.length ? filtered[0] : null
+            allTrades:
+                filtered,
+
+            decision:
+                bestTrade
 
         });
 
-    }
+    } catch (err) {
 
-    catch (err) {
-
-        console.error(err);
+        console.error(
+            "NEWS ROUTE ERROR:",
+            err
+        );
 
         res.status(500).json({
 
-            error: "news route failed",
+            error:
+                "news route failed",
 
-            message: err.message
+            message:
+                err.message
 
         });
 

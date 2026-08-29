@@ -1,74 +1,132 @@
 function calculateIndicatorScore({
+    action,
     rsi,
     trend,
     macd,
     atr,
     volume
 }) {
+
     let score = 0;
 
     // =========================
-    // RSI (0–20)
+    // RSI
     // =========================
+
     if (rsi !== null && rsi !== undefined) {
 
-        if (rsi > 70 || rsi < 30) {
-            score += 20; // strong edge
-        } else if (rsi > 55 || rsi < 45) {
-            score += 12; // moderate
-        } else {
-            score += 5;  // weak
+        if (action === "BUY") {
+
+            if (rsi >= 50 && rsi <= 65) {
+                score += 20;
+            } else if (rsi > 65 && rsi <= 70) {
+                score += 12;
+            } else if (rsi > 70) {
+                score -= 10;
+            } else if (rsi >= 40) {
+                score += 8;
+            } else {
+                score -= 5;
+            }
+
         }
 
-    } else {
-        score -= 10; // missing data penalty
+        if (action === "SELL") {
+
+            if (rsi <= 50 && rsi >= 35) {
+                score += 20;
+            } else if (rsi < 35) {
+                score -= 10;
+            } else if (rsi <= 60) {
+                score += 8;
+            } else {
+                score -= 5;
+            }
+        }
     }
 
-    // =========================
-    // TREND (0–20)
-    // =========================
-    if (trend === "BULLISH") score += 20;
-    else if (trend === "BEARISH") score += 20;
-    else score += 5;
 
     // =========================
-    // MACD (0–20)
+    // TREND
     // =========================
+
+    if (action === "BUY") {
+
+        if (trend === "BULLISH") {
+            score += 25;
+        } else if (trend === "BEARISH") {
+            score -= 20;
+        }
+
+    }
+
+    if (action === "SELL") {
+
+        if (trend === "BEARISH") {
+            score += 25;
+        } else if (trend === "BULLISH") {
+            score -= 20;
+        }
+    }
+
+
+    // =========================
+    // MACD
+    // =========================
+
     if (macd) {
-        if (macd.MACD > macd.signal) {
-            score += 20;
-        } else {
-            score += 10;
+
+        const bullish = macd.MACD > macd.signal;
+        const bearish = macd.MACD < macd.signal;
+
+        if (action === "BUY") {
+
+            if (bullish) {
+                score += 20;
+            } else if (bearish) {
+                score -= 15;
+            }
+
         }
-    } else {
-        score += 5;
+
+        if (action === "SELL") {
+
+            if (bearish) {
+                score += 20;
+            } else if (bullish) {
+                score -= 15;
+            }
+        }
     }
 
-    // =========================
-    // ATR (0–20)
-    // =========================
-    if (atr) {
-        // high volatility = more opportunity
-        score += 20;
-    } else {
-        score += 5;
-    }
 
     // =========================
-    // VOLUME (0–20)
+    // ATR
     // =========================
-    if (volume) {
-        score += 20;
-    } else {
-        score += 5;
+
+    if (atr !== null && atr !== undefined && atr > 0) {
+        score += 10;
     }
+
+
+    // =========================
+    // VOLUME
+    // =========================
+
+    if (volume && volume > 0) {
+        score += 10;
+    }
+
+    // Forex often has no Yahoo volume.
+    // No penalty when volume = 0.
+
 
     return score;
 }
 
 
 // =====================================================
-// FINAL SCORING FUNCTION (THIS IS WHAT YOU WILL USE)
+// FINAL CONFIDENCE
 // =====================================================
 
 function calculateConfidence({
@@ -84,20 +142,45 @@ function calculateConfidence({
     freshnessWeight = 1
 }) {
 
-    // Step 1: base sentiment score
-    let score = 0;
+    let score = 50;
 
-    if (sentiment.includes("STRONG_BULLISH")) score += 40;
-    else if (sentiment.includes("BULLISH")) score += 25;
-    else if (sentiment.includes("STRONG_BEARISH")) score += 40;
-    else if (sentiment.includes("BEARISH")) score += 25;
 
-    // Step 2: impact weighting
-    if (impact === "HIGH") score += 15;
-    else score += 8;
+   // =========================
+    // NEWS SENTIMENT
+    // =========================
 
-    // Step 3: technical indicators
+    if (sentiment === "STRONG_BULLISH") {
+        score += action === "BUY" ? 20 : -20;
+    }
+
+    else if (sentiment === "BULLISH") {
+        score += action === "BUY" ? 12 : -12;
+    }
+
+    else if (sentiment === "STRONG_BEARISH") {
+        score += action === "SELL" ? 20 : -20;
+    }
+
+    else if (sentiment === "BEARISH") {
+        score += action === "SELL" ? 12 : -12;
+    }
+
+
+    // =========================
+    // IMPACT
+    // =========================
+
+    if (impact === "HIGH") {
+        score += 5;
+    }
+
+
+    // =========================
+    // TECHNICAL CONFLUENCE
+    // =========================
+
     const indicatorScore = calculateIndicatorScore({
+        action,
         rsi,
         trend,
         macd,
@@ -107,12 +190,23 @@ function calculateConfidence({
 
     score += indicatorScore;
 
-    // Step 4: external weights
+
+    // =========================
+    // SOURCE / FRESHNESS
+    // =========================
+
     score *= sourceWeight;
     score *= freshnessWeight;
 
-    // Step 5: cap
-    return Math.min(Math.round(score), 95);
+
+    // =========================
+    // LIMIT
+    // =========================
+
+    return Math.max(
+        0,
+        Math.min(Math.round(score), 95)
+    );
 }
 
 module.exports = {
