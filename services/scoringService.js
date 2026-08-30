@@ -17,29 +17,52 @@ function calculateIndicatorScore({
 
         if (action === "BUY") {
 
+            // Healthy bullish momentum
             if (rsi >= 50 && rsi <= 65) {
                 score += 20;
-            } else if (rsi > 65 && rsi <= 70) {
-                score += 12;
-            } else if (rsi > 70) {
-                score -= 10;
-            } else if (rsi >= 40) {
-                score += 8;
-            } else {
-                score -= 5;
             }
 
+            // Strong but becoming extended
+            else if (rsi > 65 && rsi <= 70) {
+                score += 12;
+            }
+
+            // Overbought
+            else if (rsi > 70) {
+                score -= 10;
+            }
+
+            // Weak bullish momentum
+            else if (rsi >= 40) {
+                score += 8;
+            }
+
+            // Very weak
+            else {
+                score -= 5;
+            }
         }
+
 
         if (action === "SELL") {
 
+            // Healthy bearish momentum
             if (rsi <= 50 && rsi >= 35) {
                 score += 20;
-            } else if (rsi < 35) {
+            }
+
+            // Oversold
+            else if (rsi < 35) {
                 score -= 10;
-            } else if (rsi <= 60) {
+            }
+
+            // Some bearish pressure
+            else if (rsi <= 60) {
                 score += 8;
-            } else {
+            }
+
+            // Bullish territory
+            else {
                 score -= 5;
             }
         }
@@ -54,17 +77,21 @@ function calculateIndicatorScore({
 
         if (trend === "BULLISH") {
             score += 25;
-        } else if (trend === "BEARISH") {
-            score -= 20;
         }
 
+        else if (trend === "BEARISH") {
+            score -= 20;
+        }
     }
+
 
     if (action === "SELL") {
 
         if (trend === "BEARISH") {
             score += 25;
-        } else if (trend === "BULLISH") {
+        }
+
+        else if (trend === "BULLISH") {
             score -= 20;
         }
     }
@@ -83,17 +110,21 @@ function calculateIndicatorScore({
 
             if (bullish) {
                 score += 20;
-            } else if (bearish) {
-                score -= 15;
             }
 
+            else if (bearish) {
+                score -= 15;
+            }
         }
+
 
         if (action === "SELL") {
 
             if (bearish) {
                 score += 20;
-            } else if (bullish) {
+            }
+
+            else if (bullish) {
                 score -= 15;
             }
         }
@@ -104,7 +135,11 @@ function calculateIndicatorScore({
     // ATR
     // =========================
 
-    if (atr !== null && atr !== undefined && atr > 0) {
+    if (
+        atr !== null &&
+        atr !== undefined &&
+        atr > 0
+    ) {
         score += 10;
     }
 
@@ -117,8 +152,9 @@ function calculateIndicatorScore({
         score += 10;
     }
 
-    // Forex often has no Yahoo volume.
-    // No penalty when volume = 0.
+    // Forex often reports zero volume
+    // from Yahoo Finance.
+    // Therefore no penalty is applied.
 
 
     return score;
@@ -142,32 +178,45 @@ function calculateConfidence({
     freshnessWeight = 1
 }) {
 
+    // Start from neutral confidence
     let score = 50;
 
 
-   // =========================
+    // =========================
     // NEWS SENTIMENT
     // =========================
 
     if (sentiment === "STRONG_BULLISH") {
-        score += action === "BUY" ? 20 : -20;
+
+        score += action === "BUY"
+            ? 20
+            : -20;
     }
 
     else if (sentiment === "BULLISH") {
-        score += action === "BUY" ? 12 : -12;
+
+        score += action === "BUY"
+            ? 12
+            : -12;
     }
 
     else if (sentiment === "STRONG_BEARISH") {
-        score += action === "SELL" ? 20 : -20;
+
+        score += action === "SELL"
+            ? 20
+            : -20;
     }
 
     else if (sentiment === "BEARISH") {
-        score += action === "SELL" ? 12 : -12;
+
+        score += action === "SELL"
+            ? 12
+            : -12;
     }
 
 
     // =========================
-    // IMPACT
+    // NEWS IMPACT
     // =========================
 
     if (impact === "HIGH") {
@@ -192,22 +241,32 @@ function calculateConfidence({
 
 
     // =========================
-    // SOURCE / FRESHNESS
+    // SOURCE WEIGHT
     // =========================
 
     score *= sourceWeight;
+
+
+    // =========================
+    // FRESHNESS WEIGHT
+    // =========================
+
     score *= freshnessWeight;
 
 
     // =========================
-    // LIMIT
+    // LIMIT 0–95
     // =========================
 
     return Math.max(
         0,
-        Math.min(Math.round(score), 95)
+        Math.min(
+            Math.round(score),
+            95
+        )
     );
 }
+
 
 module.exports = {
     calculateConfidence

@@ -1,3 +1,7 @@
+const {
+    buildConsensus
+} = require("../services/consensusService");
+
 const express = require("express");
 const router = express.Router();
 
@@ -163,9 +167,9 @@ router.get("/", async (req, res) => {
 
                         volume,
 
-                        sourceWeight,
+                        sourceWeight: getSourceWeight(article.source?.name),
 
-                        freshnessWeight
+                        freshnessWeight: getFreshnessWeight(article.publishedAt)
 
                     });
 
@@ -272,6 +276,11 @@ router.get("/", async (req, res) => {
         const filtered =
             filterTrades(allTrades);
 
+        const consensus = buildConsensus(filtered);
+
+        console.log("Consensus:");
+        console.log(JSON.stringify(consensus, null, 2));
+
         console.log(
             "Trades found:",
             filtered.length
@@ -286,7 +295,7 @@ router.get("/", async (req, res) => {
                 ? filtered.reduce(
                     (best, trade) =>
                         trade.confidence >
-                        best.confidence
+                            best.confidence
                             ? trade
                             : best
                 )
@@ -298,20 +307,17 @@ router.get("/", async (req, res) => {
 
         res.json({
 
-            analysed:
-                articles.length,
+            analysed: articles.length,
 
-            totalTrades:
-                allTrades.length,
+            filtered: filtered.length,
 
-            filtered:
-                filtered.length,
+            allTrades: filtered,
 
-            allTrades:
-                filtered,
+            consensus,
 
-            decision:
-                bestTrade
+            decision: consensus.length
+                ? consensus[0]
+                : null
 
         });
 
