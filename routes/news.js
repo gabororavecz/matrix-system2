@@ -1,9 +1,9 @@
-const {
-    buildConsensus
-} = require("../services/consensusService");
-
 const express = require("express");
 const router = express.Router();
+
+const {
+    buildTradeSetup
+} = require("../services/tradeSetupService");
 
 const {
     fetchNews,
@@ -31,7 +31,14 @@ const {
     getAverageVolume
 } = require("../services/marketService");
 
-const { filterTrades } = require("../services/filterService");
+const {
+    filterTrades
+} = require("../services/filterService");
+
+const {
+    buildConsensus
+} = require("../services/consensusService");
+
 
 router.get("/", async (req, res) => {
 
@@ -43,39 +50,39 @@ router.get("/", async (req, res) => {
 
         const allTrades = [];
 
-        // ==========================================
-        // ANALYSE EVERY NEWS ARTICLE
-        // ==========================================
+
+        // =====================================================
+        // ANALYSE NEWS ARTICLES
+        // =====================================================
 
         for (const article of articles) {
 
             const text =
-                (article.title || "") +
-                " " +
-                (article.description || "");
+                `${article.title || ""} ${article.description || ""}`;
 
             const sentiment = analyzeSentiment(text);
             const impact = detectImpact(text);
             const assets = detectAssets(text);
 
-            // ==========================================
-            // ANALYSE EVERY ASSET FOUND IN THE ARTICLE
-            // ==========================================
+
+            // =================================================
+            // ANALYSE EACH ASSET
+            // =================================================
 
             for (const asset of assets) {
 
                 console.log("Analysing:", asset);
 
-                // ------------------------------------------
-                // 1. NEWS -> BUY / SELL
-                // ------------------------------------------
 
-                const finalTrade = mapToTrade(
-                    asset,
-                    sentiment
-                );
+                // =============================================
+                // NEWS -> TRADE DIRECTION
+                // =============================================
+
+                const finalTrade =
+                    mapToTrade(asset, sentiment);
 
                 if (finalTrade === "NO TRADE") {
+
                     console.log(
                         "No trade from sentiment:",
                         asset,
@@ -85,11 +92,13 @@ router.get("/", async (req, res) => {
                     continue;
                 }
 
-                // ------------------------------------------
-                // 2. GET MARKET DATA
-                // ------------------------------------------
 
-                const data = await getMarketData(asset);
+                // =============================================
+                // MARKET DATA
+                // =============================================
+
+                const data =
+                    await getMarketData(asset);
 
                 console.log(
                     asset,
@@ -98,6 +107,7 @@ router.get("/", async (req, res) => {
                 );
 
                 if (!data.length) {
+
                     console.log(
                         "Skipping",
                         asset,
@@ -107,32 +117,40 @@ router.get("/", async (req, res) => {
                     continue;
                 }
 
-                // ------------------------------------------
-                // 3. TECHNICAL INDICATORS
-                // ------------------------------------------
 
-                const rsi = getRSI(data);
+                // =============================================
+                // TECHNICAL INDICATORS
+                // =============================================
 
-                const trend = getTrend(data);
+                const rsi =
+                    getRSI(data);
 
-                const macd = getMACD(data);
+                const trend =
+                    getTrend(data);
 
-                const atr = getATR(data);
+                const macd =
+                    getMACD(data);
 
-                const volume = getAverageVolume(data);
+                const atr =
+                    getATR(data);
 
-                // ------------------------------------------
-                // 4. DETERMINE ACTION
-                // ------------------------------------------
+                const volume =
+                    getAverageVolume(data);
+
+
+                // =============================================
+                // ACTION
+                // =============================================
 
                 const action =
                     finalTrade.startsWith("BUY")
                         ? "BUY"
                         : "SELL";
 
-                // ------------------------------------------
-                // 5. SOURCE + FRESHNESS
-                // ------------------------------------------
+
+                // =============================================
+                // SOURCE / FRESHNESS
+                // =============================================
 
                 const sourceWeight =
                     getSourceWeight(
@@ -144,9 +162,10 @@ router.get("/", async (req, res) => {
                         article.publishedAt
                     );
 
-                // ------------------------------------------
-                // 6. CALCULATE CONFIDENCE
-                // ------------------------------------------
+
+                // =============================================
+                // CONFIDENCE
+                // =============================================
 
                 const confidence =
                     calculateConfidence({
@@ -167,15 +186,16 @@ router.get("/", async (req, res) => {
 
                         volume,
 
-                        sourceWeight: getSourceWeight(article.source?.name),
+                        sourceWeight,
 
-                        freshnessWeight: getFreshnessWeight(article.publishedAt)
+                        freshnessWeight
 
                     });
 
-                // ------------------------------------------
+
+                // =============================================
                 // DEBUG
-                // ------------------------------------------
+                // =============================================
 
                 console.log({
                     asset,
@@ -193,9 +213,10 @@ router.get("/", async (req, res) => {
                     confidence
                 });
 
-                // ------------------------------------------
-                // 7. CREATE TRADE
-                // ------------------------------------------
+
+                // =============================================
+                // CREATE TRADE
+                // =============================================
 
                 const trade = {
 
@@ -236,9 +257,10 @@ router.get("/", async (req, res) => {
 
                 };
 
-                // ------------------------------------------
-                // 8. ADD TRADE TO ARRAY
-                // ------------------------------------------
+
+                // =============================================
+                // ADD TRADE
+                // =============================================
 
                 allTrades.push(trade);
 
@@ -252,9 +274,10 @@ router.get("/", async (req, res) => {
             }
         }
 
-        // ==========================================
+
+        // =====================================================
         // BEFORE FILTER
-        // ==========================================
+        // =====================================================
 
         console.log(
             "Total trades before filtering:",
@@ -269,59 +292,86 @@ router.get("/", async (req, res) => {
             )
         );
 
-        // ==========================================
-        // FILTER TRADES
-        // ==========================================
+
+        // =====================================================
+        // FILTER
+        // =====================================================
 
         const filtered =
             filterTrades(allTrades);
 
-        const consensus = buildConsensus(filtered);
-
-        console.log("Consensus:");
-        console.log(JSON.stringify(consensus, null, 2));
-
         console.log(
-            "Trades found:",
+            "Trades after filtering:",
             filtered.length
         );
 
-        // ==========================================
+
+        // =====================================================
+        // CONSENSUS
+        // =====================================================
+
+        const consensus =
+            buildConsensus(filtered);
+
+        console.log("Consensus:");
+
+        console.log(
+            JSON.stringify(
+                consensus,
+                null,
+                2
+            )
+        );
+
+
+        // =====================================================
         // BEST TRADE
-        // ==========================================
+        // =====================================================
 
         const bestTrade =
             filtered.length > 0
                 ? filtered.reduce(
                     (best, trade) =>
                         trade.confidence >
-                            best.confidence
+                        best.confidence
                             ? trade
                             : best
                 )
                 : null;
 
-        // ==========================================
+
+        // =====================================================
         // RESPONSE
-        // ==========================================
+        // =====================================================
 
         res.json({
 
-            analysed: articles.length,
+            analysed:
+                articles.length,
 
-            filtered: filtered.length,
+            filtered:
+                filtered.length,
 
-            allTrades: filtered,
+            allTrades:
+                filtered,
 
             consensus,
 
-            decision: consensus.length
-                ? consensus[0]
-                : null
+            decision:
+                consensus.length
+                    ? consensus[0]
+                    : bestTrade
 
         });
 
-    } catch (err) {
+    }
+
+
+    // =========================================================
+    // ERROR HANDLING
+    // =========================================================
+
+    catch (err) {
 
         console.error(
             "NEWS ROUTE ERROR:",
@@ -341,5 +391,6 @@ router.get("/", async (req, res) => {
     }
 
 });
+
 
 module.exports = router;
