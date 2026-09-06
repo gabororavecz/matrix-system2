@@ -1,5 +1,7 @@
 const { fetchDaily } = require("./marketService");
 
+// Future Price 
+
 async function getFuturePrice(symbol) {
     const data = await fetchDaily(symbol);
 
